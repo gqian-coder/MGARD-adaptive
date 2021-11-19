@@ -1,0 +1,14 @@
+# CMake generated Testfile for 
+# Source directory: /gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/src/src/highlevel/test
+# Build directory: /gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/build/src/highlevel/test
+# 
+# This file includes the relevant testing commands required for 
+# testing this directory and lists subdirectories to be tested as well.
+add_test(CascadedAuto_test "/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/build/src/highlevel/test/CascadedAuto_test")
+set_tests_properties(CascadedAuto_test PROPERTIES  _BACKTRACE_TRIPLES "/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/src/src/highlevel/test/CMakeLists.txt;16;add_test;/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/src/src/highlevel/test/CMakeLists.txt;24;add_unit_test;/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/src/src/highlevel/test/CMakeLists.txt;0;")
+add_test(CascadedMetadata_test "/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/build/src/highlevel/test/CascadedMetadata_test")
+set_tests_properties(CascadedMetadata_test PROPERTIES  _BACKTRACE_TRIPLES "/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/src/src/highlevel/test/CMakeLists.txt;16;add_test;/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/src/src/highlevel/test/CMakeLists.txt;24;add_unit_test;/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/src/src/highlevel/test/CMakeLists.txt;0;")
+add_test(CascadedSelector_test "/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/build/src/highlevel/test/CascadedSelector_test")
+set_tests_properties(CascadedSelector_test PROPERTIES  _BACKTRACE_TRIPLES "/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/src/src/highlevel/test/CMakeLists.txt;16;add_test;/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/src/src/highlevel/test/CMakeLists.txt;24;add_unit_test;/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/src/src/highlevel/test/CMakeLists.txt;0;")
+add_test(DecompressHelpers_test "/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/build/src/highlevel/test/DecompressHelpers_test")
+set_tests_properties(DecompressHelpers_test PROPERTIES  _BACKTRACE_TRIPLES "/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/src/src/highlevel/test/CMakeLists.txt;16;add_test;/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/src/src/highlevel/test/CMakeLists.txt;24;add_unit_test;/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/src/src/highlevel/test/CMakeLists.txt;0;")

@@ -1,0 +1,1 @@
+cmake -DMGARD_ROOT=/ccs/proj/e2e/qliu/mgard_install -DUSE_ZSTD=ON -DZSTD_ROOT=/ccs/proj/e2e/qliu/mgard_install/ -DCMAKE_INSTALL_PREFIX=/ccs/home/gongq/indir/ ../

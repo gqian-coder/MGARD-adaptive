@@ -1,0 +1,101 @@
+typedef char __nv_bool;
+# 209 "/autofs/nccs-svm1_sw/summit/gcc/10.2.0/lib/gcc/powerpc64le-unknown-linux-gnu/10.2.0/include/stddef.h" 3
+typedef unsigned long size_t;
+#include "crt/device_runtime.h"
+# 260 "/autofs/nccs-svm1_sw/summit/gcc/10.2.0/include/c++/10.2.0/powerpc64le-unknown-linux-gnu/bits/c++config.h" 3
+typedef unsigned long _ZSt6size_t;
+# 75 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaMalloc(void **, size_t);
+# 80 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaFuncGetAttributes(struct cudaFuncAttributes *, const void *);
+# 85 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaDeviceGetAttribute(int *, enum cudaDeviceAttr, int);
+# 90 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaGetDevice(int *);
+# 95 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaOccupancyMaxActiveBlocksPerMultiprocessor(int *, const void *, int, size_t);
+# 100 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int *, const void *, int, size_t, unsigned);
+#include "common_functions.h"
+# 75 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaMalloc(
+# 75 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+void **p, 
+# 75 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+size_t s){
+# 76 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+{
+# 77 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 78 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+}}
+# 80 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaFuncGetAttributes(
+# 80 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+struct cudaFuncAttributes *p, 
+# 80 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+const void *c){
+# 81 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+{
+# 82 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 83 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+}}
+# 85 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaDeviceGetAttribute(
+# 85 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+int *value, 
+# 85 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+enum cudaDeviceAttr attr, 
+# 85 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+int device){
+# 86 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+{
+# 87 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 88 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+}}
+# 90 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaGetDevice(
+# 90 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+int *device){
+# 91 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+{
+# 92 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 93 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+}}
+# 95 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaOccupancyMaxActiveBlocksPerMultiprocessor(
+# 95 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+int *numBlocks, 
+# 95 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+const void *func, 
+# 95 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+int blockSize, 
+# 95 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+size_t dynamicSmemSize){
+# 96 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+{
+# 97 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 98 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+}}
+# 100 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+___device__(static  __no_sc__) enum cudaError cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(
+# 100 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+int *numBlocks, 
+# 100 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+const void *func, 
+# 100 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+int blockSize, 
+# 100 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+size_t dynamicSmemSize, 
+# 100 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+unsigned flags){
+# 101 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+{
+# 102 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+return cudaErrorUnknown;
+# 103 "/sw/summit/cuda/11.1.0/bin/../targets/ppc64le-linux/include/cuda_device_runtime_api.h"
+}}

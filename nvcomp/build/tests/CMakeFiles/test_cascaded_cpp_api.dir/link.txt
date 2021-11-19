@@ -1,0 +1,1 @@
+/sw/summit/gcc/10.2.0/bin/g++ -O3 -DNDEBUG -O3 CMakeFiles/test_cascaded_cpp_api.dir/test_cascaded_cpp_api.cpp.o -o ../bin/test_cascaded_cpp_api  -Wl,-rpath,/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/build/lib:/sw/summit/cuda/11.1.0/lib64 ../lib/libnvcomp.so /sw/summit/cuda/11.1.0/lib64/libcudart.so 

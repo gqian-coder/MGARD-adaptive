@@ -1,0 +1,1 @@
+/sw/summit/gcc/10.2.0/bin/gcc -O3 -DNDEBUG CMakeFiles/test_gdeflate_batch_c_api.dir/test_gdeflate_batch_c_api.c.o -o ../bin/test_gdeflate_batch_c_api  -Wl,-rpath,/gpfs/alpine/proj-shared/csc143/gongq/andes/MReduction/MGARD/external/nvcomp/build/lib:/sw/summit/cuda/11.1.0/lib64 ../lib/libnvcomp.so /sw/summit/cuda/11.1.0/lib64/libcudart.so 
