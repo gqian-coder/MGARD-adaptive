@@ -269,6 +269,7 @@ void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customiz
 			for (int i=1; i<c_hierarchy.L-c_hierarchy.l_th+1; i++) {
 				R2.at(i) = R2.at(i-1) / 2;
 			}
+
 			for (int cid=0; cid<filtered_set.size(); cid++) {
 				for (int r=filtered_set.at(cid).x0; r<filtered_set.at(cid).x1; r++) {
 					int r0 = r * c_hierarchy.Col;
@@ -279,7 +280,7 @@ void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customiz
 					    const std::size_t l = c_hierarchy.level[r0+c];
 						if (l >= c_hierarchy.l_th) {
 							check_nearby_lgc<Real>(u_mc, c_hierarchy, u_map, r, c, max_rad, R2);
-							size_t rad = static_cast<Real>(1<<(c_hierarchy.L - l));
+							int rad = static_cast<int>(1<<(c_hierarchy.L - l));
 							int rleft  = (r-rad > 0) ? (r-rad) : 0;
 							int rright = (r+rad+1<c_hierarchy.Row) ? (r+rad+1) : c_hierarchy.Row;
 							for (int rr=rleft; rr<rright; rr++) {
@@ -287,6 +288,8 @@ void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customiz
 								int cleft  = (c-rad>0) ? c-rad : 0;
 								int cright = (c+rad+1<c_hierarchy.Col) ? (c+rad+1) : c_hierarchy.Col;
    	                			for (int cc=cleft; cc<cright; cc++) {
+                                    if (r0+cc>=(c_hierarchy.Col *  c_hierarchy.Row))
+                                        std::cout << "error in memory...r = "<< rr << ", cc = " << cc << ", index = " << r0+cc << ", Col = " << c_hierarchy.Col << ", Row = " << c_hierarchy.Col << "\n";
 									u_map[r0+cc] = 1;
 								}
 							}
@@ -299,6 +302,7 @@ void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customiz
 			depth ++;
 			dfs_amr<Real>(filtered_set, u_mc, c_hierarchy, thresh, depth, bin_w, bin_min, ratio_bin, u_map);
 		}
+
 	}
 	bin_w = size_t(bin_w * ratio_bin[depth]);
 	depth --;
@@ -319,7 +323,7 @@ compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Rea
   Real *const unshuffled_u = static_cast<Real *>(std::malloc(ndof * sizeof(Real)));
   unshuffle(hierarchy, u, unshuffled_u);
   const std::array<std::size_t, N> &SHAPE = hierarchy.shapes.back();
-  Real *const u_map = static_cast<Real *>(std::malloc(ndof * sizeof(Real)));
+  Real* u_map = static_cast<Real *>(std::malloc(ndof * sizeof(Real)));
   std::memset(u_map, 0, ndof*sizeof(Real));
   //QG! Assume the array is 2D
   int Dim2=1, r, c, h;
@@ -367,19 +371,19 @@ compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Rea
   int nbin_C = (int)std::ceil((float)c_hierarchy.Col / bin_max);
   int nbin_H = (int)std::ceil((float)c_hierarchy.Height / bin_max);
   std::vector<struct box_coord2d> blc_set(nbin_R*nbin_C*nbin_H);
-  std::cout << "nbin_R = " << nbin_R << ", nbin_C = " << nbin_C << ", nbin_H = " << nbin_H << "\n"; 
+//  std::cout << "nbin_R = " << nbin_R << ", nbin_C = " << nbin_C << ", nbin_H = " << nbin_H << "\n"; 
 //  std::cout << "Col = " << Col << ", Row = " << Row << ", Height = " << Height << "\n";
   get_hist_blc_coord(blc_set, nbin_R, nbin_C, c_hierarchy.Row, c_hierarchy.Col, bin_max, 0, 0);
   std::vector<struct box_coord2d>child_set = filter_hist_blc<Real>(unshuffled_u, c_hierarchy, blc_set, thresh[0], bin_max);
   // depth first search for hierachical block refinement 
-  std::cout << "number of blocks after the 1st thresholding: " << child_set.size() << "/" << blc_set.size() <<"\n";
+//  std::cout << "number of blocks after the 1st thresholding: " << child_set.size() << "/" << blc_set.size() <<"\n";
   int depth = 1;
   size_t bin_w = bin_max;
   size_t bin_min = bin_max;
   for (int i=0; i<ratio_bin.size(); i++) {
   	bin_min = (size_t)std::ceil(bin_min / ratio_bin.at(i));
   }
-  std::cout << "max bin: " << bin_max << ", min bin: " << bin_min << "\n";
+//  std::cout << "max bin: " << bin_max << ", min bin: " << bin_min << "\n";
   dfs_amr<Real>(child_set, unshuffled_u, c_hierarchy, thresh, depth, bin_w, bin_min, ratio_bin, u_map);
 
   char map_f[256];
@@ -387,6 +391,7 @@ compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Rea
   FILE *fp = fopen (map_f, "wb");
   fwrite (u_map , sizeof(Real), ndof, fp);
   fclose(fp);
+/*
   size_t nonzr_ = 0;
   for (int i=0; i<ndof; i++) {
   	if (u_map[i]>0) {
@@ -394,6 +399,7 @@ compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Rea
 	}
   }
   std::cout << "percentage of nonzeros in u_map: " << (float)nonzr_*100.0 / ndof << "%\n";
+*/
   shuffle(hierarchy, u_map, unshuffled_u);
   // now unshuffled_u is the shuffled u_map
   using Qntzr = TensorMultilevelCoefficientQuantizer<N, Real, DEFAULT_INT_T>;
@@ -402,20 +408,21 @@ compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Rea
   const RangeSlice<It> quantized_range = quantizer(u, unshuffled_u);
   const std::vector<DEFAULT_INT_T> quantized(quantized_range.begin(),
                                              quantized_range.end());
-  std::free(u);
-  std::free(unshuffled_u);
-  std::free(u_map);
-//  fp = fopen("quantized_coeff.bin", "wb");
+  free(u);
+//  free(unshuffled_u);
+//  free(u_map);
+/*  fp = fopen("quantized_coeff.bin", "wb");
   float *const unshuffled_qc = (float *)std::malloc(ndof * sizeof(float));
   float *const shuffled_qc   = (float *)std::malloc(ndof * sizeof(float));
   for (int i=0; i<ndof; i++) {
       shuffled_qc[i] = (float)quantized.data()[i];
   }
   unshuffle(hierarchy, shuffled_qc, unshuffled_qc);
-//  fwrite(unshuffled_qc, sizeof(float), ndof, fp);
-//  fclose(fp);
+  fwrite(unshuffled_qc, sizeof(float), ndof, fp);
+  fclose(fp);
   free(unshuffled_qc);
   free(shuffled_qc);
+*/
 #ifndef MGARD_ZSTD
   std::vector<std::uint8_t> z_output;
   // TODO: Check whether `compress_memory_z` changes its input.
