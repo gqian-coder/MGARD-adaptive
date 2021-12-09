@@ -58,12 +58,18 @@ Real s_quantum(const TensorMeshHierarchy<N, Real> &hierarchy, const Real s,
 
 } // namespace
 
+#define MAX_DEPTH 10
 template <std::size_t N, typename Real, typename Int>
 Qntzr<N, Real, Int>::Qntzr(const TensorMeshHierarchy<N, Real> &hierarchy,
-                           const Real s, const Real tolerance, const Real scalar_tol)
-    : hierarchy(hierarchy), s(s), tolerance(tolerance), scalar_tol(scalar_tol),
-      nodes(hierarchy, hierarchy.L),
-      supremum_quantizer(supremum_quantum(hierarchy, tolerance)) {}
+                           const Real s, const Real tol, const size_t alpha)
+    : hierarchy(hierarchy), s(s), nodes(hierarchy, hierarchy.L),
+      supremum_quantizer(supremum_quantum(hierarchy, tol)) {
+    for (int i=0; i<MAX_DEPTH; i++) {
+        scalar[i]    = std::pow(alpha, i); 
+        tolerance[i] = scalar[i] * tol;
+//        std::cout << tolerance[i] << ", " << scalar[i] << "\n";
+    }
+}
 
 template <std::size_t N, typename Real, typename Int>
 Int Qntzr<N, Real, Int>::operator()(const TensorNode<N> node,
@@ -74,15 +80,17 @@ Int Qntzr<N, Real, Int>::operator()(const TensorNode<N> node,
     return supremum_quantizer(coefficient);
   } else {
 //    std::cout << cnt << " coefficient: " << coefficient << ", cmap: " << cmap << "\n";
-    Real tol = cmap ? tolerance : tolerance * scalar_tol;
+//    Real tol = cmap ? tolerance : tolerance * scalar_tol;
 
     const LinearQuantizer<Real, Int> quantizer(
-        s_quantum(hierarchy, s, tol, node));
-    if (cmap==1) {
-        return quantizer(coefficient);
-    } else {
-        return scalar_tol*quantizer(coefficient);
-    }
+        s_quantum(hierarchy, s, tolerance[cmap], node));
+
+    return scalar[cmap] * quantizer(coefficient); 
+//    if (cmap==1) {
+//        return quantizer(coefficient);
+//    } else {
+//        return scalar_tol*quantizer(coefficient);
+//    }
   }
 }
 

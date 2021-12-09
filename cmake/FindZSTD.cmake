@@ -50,9 +50,9 @@ if(NOT ZSTD_FOUND)
     set(ZSTD_LIBRARIES ${ZSTD_LIBRARY})
     add_definitions(-DMGARD_ZSTD)
     include_directories(${ZSTD_INCLUDE_DIR})
-    if(ZSTD_FOUND AND NOT TARGET ZSTD::ZSTD)
-      add_library(ZSTD::ZSTD UNKNOWN IMPORTED)
-      set_target_properties(ZSTD::ZSTD PROPERTIES
+    if(ZSTD_FOUND AND NOT TARGET zstd::zstd)
+      add_library(zstd::zstd UNKNOWN IMPORTED)
+      set_target_properties(zstd::zstd PROPERTIES
         IMPORTED_LOCATION             "${ZSTD_LIBRARY}"
         INTERFACE_LINK_LIBRARIES      "${ZSTD_LIBRARIES}"
         INTERFACE_INCLUDE_DIRECTORIES "${ZSTD_INCLUDE_DIR}"

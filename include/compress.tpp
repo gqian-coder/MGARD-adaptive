@@ -269,7 +269,6 @@ void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customiz
 			for (int i=1; i<c_hierarchy.L-c_hierarchy.l_th+1; i++) {
 				R2.at(i) = R2.at(i-1) / 2;
 			}
-
 			for (int cid=0; cid<filtered_set.size(); cid++) {
 				for (int r=filtered_set.at(cid).x0; r<filtered_set.at(cid).x1; r++) {
 					int r0 = r * c_hierarchy.Col;
@@ -284,13 +283,13 @@ void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customiz
 							int rleft  = (r-rad > 0) ? (r-rad) : 0;
 							int rright = (r+rad+1<c_hierarchy.Row) ? (r+rad+1) : c_hierarchy.Row;
 							for (int rr=rleft; rr<rright; rr++) {
-								int r0 = rr*c_hierarchy.Col;
+								int r00 = rr*c_hierarchy.Col;
 								int cleft  = (c-rad>0) ? c-rad : 0;
 								int cright = (c+rad+1<c_hierarchy.Col) ? (c+rad+1) : c_hierarchy.Col;
    	                			for (int cc=cleft; cc<cright; cc++) {
-                                    if (r0+cc>=(c_hierarchy.Col *  c_hierarchy.Row))
-                                        std::cout << "error in memory...r = "<< rr << ", cc = " << cc << ", index = " << r0+cc << ", Col = " << c_hierarchy.Col << ", Row = " << c_hierarchy.Col << "\n";
-									u_map[r0+cc] = 1;
+                                    if (r00+cc>=(c_hierarchy.Col *  c_hierarchy.Row))
+                                        std::cout << "error in memory...r = "<< rr << ", cc = " << cc << ", index = " << r00+cc << ", Col = " << c_hierarchy.Col << ", Row = " << c_hierarchy.Col << "\n";
+									u_map[r00+cc] = 0;
 								}
 							}
 						}
@@ -300,20 +299,31 @@ void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customiz
 		} else {
 //			std::cout << "call recursive dfs_arm, depth = " << depth << ", bin_w = " << bin_w << ", # of blocks: " << child_set.size() << "\n";
 			depth ++;
+            int max_depth = thresh.size();
+            for (int cid=0; cid<filtered_set.size(); cid++) {
+                for (int r=filtered_set.at(cid).x0; r<filtered_set.at(cid).x1; r++) {
+                    int r0 = r * c_hierarchy.Col;
+                    for (int c=filtered_set.at(cid).y0; c<filtered_set.at(cid).y1; c++) {
+                        u_map[r0+c] = max_depth - depth;
+                    }
+                }
+            }
 			dfs_amr<Real>(filtered_set, u_mc, c_hierarchy, thresh, depth, bin_w, bin_min, ratio_bin, u_map);
 		}
-
 	}
 	bin_w = size_t(bin_w * ratio_bin[depth]);
 	depth --;
 }
 
+// u_map: multi-resolution
+// k: alpha^(k-1) * least_eb
 using DEFAULT_INT_T = long int;
 template <std::size_t N, typename Real>
 CompressedDataset<N, Real>
 compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Real s, 
 		const Real tolerance, const std::vector<Real> thresh, const size_t scalar, 
-		 const size_t bin_max, const std::vector<size_t> ratio_bin, const size_t l_th) {
+		 const size_t bin_max, const std::vector<size_t> ratio_bin, const size_t l_th,
+        const char* filename, bool wr /*1 for write 0 for read*/) {
   const std::size_t ndof = hierarchy.ndof();
   // TODO: Can be smarter about copies later.
   Real *const u = static_cast<Real *>(std::malloc(ndof * sizeof(Real)));
@@ -324,73 +334,90 @@ compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Rea
   unshuffle(hierarchy, u, unshuffled_u);
   const std::array<std::size_t, N> &SHAPE = hierarchy.shapes.back();
   Real* u_map = static_cast<Real *>(std::malloc(ndof * sizeof(Real)));
-  std::memset(u_map, 0, ndof*sizeof(Real));
-  //QG! Assume the array is 2D
-  int Dim2=1, r, c, h;
-  struct customized_hierarchy c_hierarchy;
-  c_hierarchy.level = new size_t[ndof];
-  c_hierarchy.L     = hierarchy.L;
-  c_hierarchy.Row  = (int)SHAPE[0];
-  if (N>=2) {
-	  c_hierarchy.Col = (int)SHAPE[1];
+  
+  if ((wr==0) && (filename!=NULL)) {
+    FILE *file = fopen(filename, "rb");
+    fread(u_map, sizeof(Real), ndof, file);
   } else {
-  	c_hierarchy.Col  = 1;
-  }
-  if (N==3) {
-  	  c_hierarchy.Height = (int)SHAPE[2];
-	  Dim2   = c_hierarchy.Height * c_hierarchy.Col;
-  } else {
-	  c_hierarchy.Height = 1;
-  }
-  for (std::size_t i=0; i<ndof; i++) {
-    std::array<std::size_t, N> multiindex;
-	if (N==1) {
-		 multiindex[0] = i;
-	}
-	if (N==2) {
-		r = int(i/c_hierarchy.Col);
-	    c = i - r*c_hierarchy.Col;
-		multiindex[0] = r;
-		multiindex[1] = c;
-	} else {
-		r = (int)(i / Dim2);
-		c = (int)((i - r*Dim2) / c_hierarchy.Height);
-		h = i % c_hierarchy.Height;
-		multiindex[0] = r;
-		multiindex[1] = c;
-		multiindex[2] = h;
-	}
-    c_hierarchy.level[i] = hierarchy.date_of_birth(multiindex);
-	if (c_hierarchy.level[i]<l_th) {
-		u_map[i] = 1;
-	}
-  }
-  c_hierarchy.l_th = l_th;
-  // number of bins in the 1st layer of histogram
-  int nbin_R = (int)std::ceil((float)c_hierarchy.Row / bin_max);
-  int nbin_C = (int)std::ceil((float)c_hierarchy.Col / bin_max);
-  int nbin_H = (int)std::ceil((float)c_hierarchy.Height / bin_max);
-  std::vector<struct box_coord2d> blc_set(nbin_R*nbin_C*nbin_H);
-//  std::cout << "nbin_R = " << nbin_R << ", nbin_C = " << nbin_C << ", nbin_H = " << nbin_H << "\n"; 
-//  std::cout << "Col = " << Col << ", Row = " << Row << ", Height = " << Height << "\n";
-  get_hist_blc_coord(blc_set, nbin_R, nbin_C, c_hierarchy.Row, c_hierarchy.Col, bin_max, 0, 0);
-  std::vector<struct box_coord2d>child_set = filter_hist_blc<Real>(unshuffled_u, c_hierarchy, blc_set, thresh[0], bin_max);
-  // depth first search for hierachical block refinement 
-//  std::cout << "number of blocks after the 1st thresholding: " << child_set.size() << "/" << blc_set.size() <<"\n";
-  int depth = 1;
-  size_t bin_w = bin_max;
-  size_t bin_min = bin_max;
-  for (int i=0; i<ratio_bin.size(); i++) {
-  	bin_min = (size_t)std::ceil(bin_min / ratio_bin.at(i));
-  }
-//  std::cout << "max bin: " << bin_max << ", min bin: " << bin_min << "\n";
-  dfs_amr<Real>(child_set, unshuffled_u, c_hierarchy, thresh, depth, bin_w, bin_min, ratio_bin, u_map);
+    int depth = 1, max_depth=thresh.size();
+    size_t bin_w = bin_max;
+    size_t bin_min = bin_max;
+    for (int i=0; i<ratio_bin.size(); i++) {
+        bin_min = (size_t)std::ceil(bin_min / ratio_bin.at(i));
+    }
+    //  std::memset(u_map, 0, ndof*sizeof(Real));
+    //QG! Assume the array is 2D
+    int Dim2=1, r, c, h;
+    struct customized_hierarchy c_hierarchy;
+    c_hierarchy.level = new size_t[ndof];
+    c_hierarchy.L     = hierarchy.L;
+    c_hierarchy.Row  = (int)SHAPE[0];
+    if (N>=2) {
+	    c_hierarchy.Col = (int)SHAPE[1];
+    } else {
+  	    c_hierarchy.Col  = 1;
+    }
+    if (N==3) {
+  	    c_hierarchy.Height = (int)SHAPE[2];
+	    Dim2   = c_hierarchy.Height * c_hierarchy.Col;
+    } else {
+	    c_hierarchy.Height = 1;
+    }
+    for (std::size_t i=0; i<ndof; i++) {
+        std::array<std::size_t, N> multiindex;
+	    if (N==1) {
+		    multiindex[0] = i;
+	    }
+	    if (N==2) {
+		    r = int(i/c_hierarchy.Col);
+	        c = i - r*c_hierarchy.Col;
+		    multiindex[0] = r;
+		    multiindex[1] = c;
+	    } else {
+		    r = (int)(i / Dim2);
+		    c = (int)((i - r*Dim2) / c_hierarchy.Height);
+		    h = i % c_hierarchy.Height;
+		    multiindex[0] = r;
+		    multiindex[1] = c;
+		    multiindex[2] = h;
+	    }
+        c_hierarchy.level[i] = hierarchy.date_of_birth(multiindex);
+	    if (c_hierarchy.level[i]<l_th) {
+		    u_map[i] = 0;
+	    } else {
+            u_map[i] = max_depth;
+        }
+    }
+    c_hierarchy.l_th = l_th;
+    // number of bins in the 1st layer of histogram
+    int nbin_R = (int)std::ceil((float)c_hierarchy.Row / bin_max);
+    int nbin_C = (int)std::ceil((float)c_hierarchy.Col / bin_max);
+    int nbin_H = (int)std::ceil((float)c_hierarchy.Height / bin_max);
+    std::vector<struct box_coord2d> blc_set(nbin_R*nbin_C*nbin_H);
+    //  std::cout << "nbin_R = " << nbin_R << ", nbin_C = " << nbin_C << ", nbin_H = " << nbin_H << "\n"; 
+    //  std::cout << "Col = " << Col << ", Row = " << Row << ", Height = " << Height << "\n";
+    get_hist_blc_coord(blc_set, nbin_R, nbin_C, c_hierarchy.Row, c_hierarchy.Col, bin_max, 0, 0);
+    std::vector<struct box_coord2d>child_set = filter_hist_blc<Real>(unshuffled_u, c_hierarchy, blc_set, thresh[0], bin_max);
 
-  char map_f[256];
-  sprintf(map_f, "u_map.bin");
-  FILE *fp = fopen (map_f, "wb");
-  fwrite (u_map , sizeof(Real), ndof, fp);
-  fclose(fp);
+  // depth first search for hierachical block refinement 
+    //  std::cout << "number of blocks after the 1st thresholding: " << child_set.size() << "/" << blc_set.size() <<"\n";
+
+    for (int cid=0; cid<child_set.size(); cid++) {
+        for (int r=child_set.at(cid).x0; r<child_set.at(cid).x1; r++) {
+            int r0 = r * c_hierarchy.Col;
+            for (int c=child_set.at(cid).y0; c<child_set.at(cid).y1; c++) {
+                u_map[r0+c] = max_depth-depth;
+            }
+        }
+    }
+    //  std::cout << "max bin: " << bin_max << ", min bin: " << bin_min << "\n";
+    dfs_amr<Real>(child_set, unshuffled_u, c_hierarchy, thresh, depth, bin_w, bin_min, ratio_bin, u_map);
+    if (filename != NULL) {
+        FILE *fp = fopen (filename, "wb");
+        fwrite (u_map , sizeof(Real), ndof, fp);
+        fclose(fp);
+    }
+  }
 /*
   size_t nonzr_ = 0;
   for (int i=0; i<ndof; i++) {
@@ -409,8 +436,8 @@ compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Rea
   const std::vector<DEFAULT_INT_T> quantized(quantized_range.begin(),
                                              quantized_range.end());
   free(u);
-//  free(unshuffled_u);
-//  free(u_map);
+  free(unshuffled_u);
+  free(u_map);
 /*  fp = fopen("quantized_coeff.bin", "wb");
   float *const unshuffled_qc = (float *)std::malloc(ndof * sizeof(float));
   float *const shuffled_qc   = (float *)std::malloc(ndof * sizeof(float));

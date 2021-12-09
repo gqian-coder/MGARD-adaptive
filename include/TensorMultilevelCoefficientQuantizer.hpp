@@ -25,7 +25,7 @@ public:
   //! multilevel coefficients.
   TensorMultilevelCoefficientQuantizer(
       const TensorMeshHierarchy<N, Real> &hierarchy, const Real s,
-      const Real tolerance, const Real scalar);
+      const Real tolerance, const size_t scalar);
 
   //! Quantize a multilevel coefficient.
   //!
@@ -53,10 +53,10 @@ public:
   const Real s;
 
   //! Global quantization error tolerance.
-  const Real tolerance;
+  std::vector<Real> tolerance = std::vector<Real>(10);
 
   //QG! Scalar -- scalar*tolerance for coefficients that are smaller than thresh
-  const Real scalar_tol;
+  std::vector<size_t> scalar = std::vector<size_t>(10);
 private:
   //! Nodes of the finest mesh in the hierarchy.
   const ShuffledTensorNodeRange<N, Real> nodes;
