@@ -199,6 +199,8 @@ if(MGARD_ENABLE_CUDA)
   endif()
 endif()
 
+set (ENV{ZSTD_ROOT} /ccs/home/gongq/indir/)
+
 find_package(ZLIB REQUIRED)
 find_package(ZSTD)
 find_package(MOAB)
@@ -296,7 +298,7 @@ if(MOAB_FOUND)
 	target_link_libraries(mgard-library PUBLIC MOAB::MOAB)
 endif()
 if(ZSTD_FOUND)
-	target_link_libraries(mgard-library PUBLIC ZSTD::ZSTD)
+	target_link_libraries(mgard-library PUBLIC zstd::zstd)
 endif()
 
 if(MGARD_ENABLE_CUDA)
