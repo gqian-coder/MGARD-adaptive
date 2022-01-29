@@ -220,40 +220,42 @@ std::vector<struct box_coord2d> filter_hist_blc(const Real *u_mc, customized_hie
 
 template <typename Real>
 void check_nearby_lgc(const Real *u_mc, customized_hierarchy &c_hierarchy, Real *u_map, 
-						int r, int c, const size_t rad, std::vector<size_t> R2)
+						int r, int c, const size_t rad, std::vector<size_t> R2, u_char flag)
 {
-	int rr_0=0, rr_1=c_hierarchy.Row, cc_0=0, cc_1=c_hierarchy.Col;
-	size_t l, backoff_dist;
-    int temp = r-rad;
-	if (temp>0) rr_0 = temp; 
-	temp = c-rad;
-	if (temp>0) cc_0 = temp;
-	temp = r+rad+1;
-	if (temp<c_hierarchy.Row) rr_1 = temp;
-	temp = c+rad+1;
-	if (temp<c_hierarchy.Col) cc_1 = temp;
-	size_t l_th = c_hierarchy.l_th;
-	size_t Col  = c_hierarchy.Col;
-	for (int rr=rr_0; rr<rr_1; rr++) {
-		l = c_hierarchy.level[rr*Col+c]; 
-		if (l>=l_th) {
-			backoff_dist = R2[l-l_th];
-			if (std::abs(rr-r)<backoff_dist) {
-				u_map[rr*Col+c] = 0;
-			}
-		}
-	}
-//	std::cout << "cc_0 = " << cc_0 << ", cc_1 = " << cc_1 << "\n";
-	int r0 = r*Col;
-	for (int cc=cc_0; cc<cc_1; cc++) {
-		l = c_hierarchy.level[r0+cc]; 
-		if (l>=l_th) {
-			backoff_dist = R2[l-l_th];
-			if (std::abs(cc-c)<backoff_dist) {
-				u_map[r0+c] = 0;
-			}
-		}
-	}
+  int k;
+  std::vector<int> top_r{0, 0, r, r}; 
+  std::vector<int> bottom_r{r, r, c_hierarchy.Row, c_hierarchy.Row};
+  std::vector<int> left_c{0, c, 0, c};
+  std::vector<int> right_c{c, c_hierarchy.Col, c, c_hierarchy.Col};
+  size_t l, backoff_dist;
+  int temp = r-rad;
+  if (temp>0) {top_r[0] = temp; top_r[1] = temp;} 
+  temp = c-rad;
+  if (temp>0) {left_c[0] = temp; left_c[2] = temp;}
+  temp = r+rad+1;
+  if (temp<c_hierarchy.Row) {bottom_r[2] = temp; bottom_r[3] = temp;}
+  temp = c+rad+1;
+  if (temp<c_hierarchy.Col) {right_c[1] = temp; right_c[3] = temp;}
+  size_t l_th = c_hierarchy.l_th;
+  size_t Col  = c_hierarchy.Col;
+  for (int fg=0; fg<4; fg++) { // top left, top right, bottom left, bottom right
+    if ((flag & (1<<fg))) { 
+      for (int rr=top_r[fg]; rr<bottom_r[fg]; rr++) {
+        for (int cc=left_c[fg]; cc<right_c[fg]; cc++) {
+          k = rr*Col+cc;
+          if (u_map[k]!=0) {
+            l = c_hierarchy.level[k];
+            if (l>=l_th) {
+              backoff_dist = ((rr==r) || (cc==c)) ? 0.75*R2[l-l_th] : R2[l-l_th];
+              if (std::abs(rr-r)+std::abs(cc-c) < backoff_dist) {
+                u_map[k] = 0;
+              }
+            }
+          }
+        }
+      }
+    } 
+  }
 }
 
 template <typename Real>
@@ -263,24 +265,33 @@ void check_edge_coeff(const Real *u_mc, customized_hierarchy &c_hierarchy, Real 
 {
     std::vector<int>rr_vec{rleft, rright};
     std::vector<int>cc_vec{cleft, cright};
+    std::vector<u_char>flag{3, 12, 5, 10};
+    int cnt=0;
+    // the top and bottom horizontal edge 
     for (std::vector<int>::iterator rr = rr_vec.begin() ; rr != rr_vec.end(); ++rr) {
         int r00 = (*rr)*c_hierarchy.Col;
         for (int cc=cleft; cc<cright+1; cc++) {
-            check_nearby_lgc<Real>(u_mc, c_hierarchy, u_map, (*rr), cc, max_rad, R2);
+            check_nearby_lgc<Real>(u_mc, c_hierarchy, u_map, (*rr), cc, max_rad, R2, flag[cnt]);
         }
+        cnt ++;
     }
+    // the left and right vertical edge
     for (std::vector<int>::iterator cc = cc_vec.begin() ; cc != cc_vec.end(); ++cc) {
-        for (int rr=rleft; rr<rright+1; rr++) {
+        for (int rr=rleft+1; rr<rright; rr++) {
             int r00 = rr*c_hierarchy.Col;
-            check_nearby_lgc<Real>(u_mc, c_hierarchy, u_map, rr, (*cc), max_rad, R2);
+            check_nearby_lgc<Real>(u_mc, c_hierarchy, u_map, rr, (*cc), max_rad, R2, flag[cnt]);
         }
+        cnt ++;
     }
 }
 
+//double avg_rad = 0;
+//int    cnt_pts = 0;
+
 template <typename Real>
 void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customized_hierarchy &c_hierarchy, 
-			const std::vector<Real> thresh, int &depth, size_t &bin_w, size_t bin_min, const std::vector<size_t> ratio_bin, 
-			Real* u_map) {
+			const std::vector<Real> thresh, int &depth, size_t &bin_w, const size_t bin_min, 
+            const std::vector<size_t> ratio_bin, Real* u_map, const size_t max_rad, const std::vector<size_t> R2) {
 //	std::cout << "initial bin_w = " << bin_w << ", ratio_R = " << ratio_bin[depth] << "\n";
 	bin_w = std::ceil(bin_w / ratio_bin[depth]);
 //	std::cout << "depth = " << depth << ", bin_w = " << bin_w << "\n";
@@ -296,13 +307,7 @@ void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customiz
 		get_hist_blc_coord(child_set, nbin_R, nbin_C, bR, bC, bin_w, blc_set.at(k).x0, blc_set.at(k).y0);
 		std::vector<struct box_coord2d>filtered_set = filter_hist_blc<Real>(u_mc, c_hierarchy, child_set, thresh[depth], bin_w);
 		if (bin_w <= bin_min){
-			size_t max_rad = 3 * (1<<(c_hierarchy.L - c_hierarchy.l_th)); // decrease to ~ 12.4% of the peak
 //            std::cout << "max_rad: " << max_rad << "\n";
-			std::vector<size_t>R2(c_hierarchy.L-c_hierarchy.l_th+1);  
-			R2.at(0) = max_rad; 
-			for (int i=1; i<c_hierarchy.L-c_hierarchy.l_th+1; i++) {
-				R2.at(i) = R2.at(i-1) / 2;
-			}
 			for (int cid=0; cid<filtered_set.size(); cid++) {
                 int r, c;
 				for (r=filtered_set.at(cid).x0; r<filtered_set.at(cid).x1; r++) {
@@ -313,7 +318,6 @@ void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customiz
 //						std::cout << "cid = " << cid << ", r = " << r << ", c = " << c << "\n";
 					    const std::size_t l = c_hierarchy.level[r0+c];
 						if (l >= c_hierarchy.l_th) {
-//							check_nearby_lgc<Real>(u_mc, c_hierarchy, u_map, r, c, max_rad, R2);
 							int rad = static_cast<int>(1<<(c_hierarchy.L - l));
 							int rleft  = (r-rad > 0) ? (r-rad) : 0;
 							int rright = (r+rad+1<c_hierarchy.Row) ? (r+rad+1) : c_hierarchy.Row;
@@ -342,6 +346,8 @@ void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customiz
                         const std::size_t l = c_hierarchy.level[r0+c];
                         if (l >= c_hierarchy.l_th) { 
                             int rad = static_cast<int>(1<<(c_hierarchy.L - l));
+//                            avg_rad += (double)rad;
+//                            cnt_pts ++;
                             int rleft  = (r-rad > 0) ? (r-rad) : 0;
                             int rright = (r+rad<c_hierarchy.Row) ? (r+rad) : c_hierarchy.Row-1;
                             int cleft  = (c-rad>0) ? c-rad : 0;
@@ -350,14 +356,14 @@ void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customiz
                         }
                     }
                 }
-                if (c_hierarchy.Col > 1) {
+                if ((c_hierarchy.Col > 1) && (bin_w>1)) {
                     std::vector<int> col_vec {filtered_set.at(cid).y0};
                     if (filtered_set.at(cid).y1 - filtered_set.at(cid).y0 > 1) {
                         col_vec.push_back(filtered_set.at(cid).y1-1);
                     }
                     for (std::vector<int>::iterator it = col_vec.begin() ; it != col_vec.end(); ++it) {
                         c = (*it);
-                        for (int r=filtered_set.at(cid).x0; r<filtered_set.at(cid).x1; r++) {
+                        for (int r=filtered_set.at(cid).x0+1; r<filtered_set.at(cid).x1; r++) {
                         // check
                             int r0 = r * c_hierarchy.Col;
                             const std::size_t l = c_hierarchy.level[r0+c];
@@ -367,7 +373,6 @@ void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customiz
                                 int rright = (r+rad<c_hierarchy.Row) ? (r+rad) : c_hierarchy.Row-1;
                                 int cleft  = (c-rad>0) ? c-rad : 0;
                                 int cright = (c+rad<c_hierarchy.Col) ? (c+rad) : c_hierarchy.Col-1;
-                        
                                 check_edge_coeff(u_mc, c_hierarchy, u_map, rleft, rright, cleft, cright, max_rad, R2);
                             }
                         }
@@ -377,16 +382,7 @@ void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customiz
 		} else {
 //			std::cout << "call recursive dfs_arm, depth = " << depth << ", bin_w = " << bin_w << ", # of blocks: " << filtered_set.size() << " / " << child_set.size() << "\n";
 			depth ++;
-            int max_depth = thresh.size();
-            for (int cid=0; cid<filtered_set.size(); cid++) {
-                for (int r=filtered_set.at(cid).x0; r<filtered_set.at(cid).x1; r++) {
-                    int r0 = r * c_hierarchy.Col;
-                    for (int c=filtered_set.at(cid).y0; c<filtered_set.at(cid).y1; c++) {
-                        u_map[r0+c] = max_depth - depth;
-                    }
-                }
-            }
-			dfs_amr<Real>(filtered_set, u_mc, c_hierarchy, thresh, depth, bin_w, bin_min, ratio_bin, u_map);
+			dfs_amr<Real>(filtered_set, u_mc, c_hierarchy, thresh, depth, bin_w, bin_min, ratio_bin, u_map, max_rad, R2);
 		}
 	}
 	bin_w = size_t(bin_w * ratio_bin[depth]);
@@ -399,7 +395,7 @@ using DEFAULT_INT_T = long int;
 template <std::size_t N, typename Real>
 CompressedDataset<N, Real>
 compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Real s, 
-		const Real tolerance, const std::vector<Real> thresh, const size_t scalar, 
+		const Real tolerance, const std::vector<Real> thresh, 
 		 const size_t bin_max, const std::vector<size_t> ratio_bin, const size_t l_th,
         const char* filename, bool wr /*1 for write 0 for read*/) {
   const std::size_t ndof = hierarchy.ndof();
@@ -417,7 +413,7 @@ compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Rea
     FILE *file = fopen(filename, "rb");
     fread(u_map, sizeof(Real), ndof, file);
   } else {
-    int depth = 1, max_depth=thresh.size();
+    int depth = 1;
     size_t bin_w = bin_max;
     size_t bin_min = bin_max;
     for (int i=0; i<ratio_bin.size(); i++) {
@@ -463,11 +459,11 @@ compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Rea
 	    if (c_hierarchy.level[i]<l_th) {
 		    u_map[i] = 0;
 	    } else {
-            u_map[i] = max_depth;
+            u_map[i] = 1;//hierarchy.L; 
         }
     }
     c_hierarchy.l_th = l_th;
-    std::cout << "L_max = " << hierarchy.L << "\n";
+//    std::cout << "L_max = " << hierarchy.L << "\n";
     if (l_th<hierarchy.L) {
         // number of bins in the 1st layer of histogram
         int nbin_R = (int)std::ceil((float)c_hierarchy.Row / bin_max);
@@ -481,39 +477,47 @@ compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Rea
 
         // depth first search for hierachical block refinement 
 //        std::cout << "number of blocks after the 1st thresholding: " << child_set.size() << "/" << blc_set.size() <<"\n";
-
-        for (int cid=0; cid<child_set.size(); cid++) {
-            for (int r=child_set.at(cid).x0; r<child_set.at(cid).x1; r++) {
-                int r0 = r * c_hierarchy.Col;
-                for (int c=child_set.at(cid).y0; c<child_set.at(cid).y1; c++) {
-                    u_map[r0+c] = max_depth-depth;
-                }
-            }
+        size_t max_rad = (size_t)(2 * (1<<(c_hierarchy.L - c_hierarchy.l_th+1))); // 3rd peak to the 0th center 
+        std::vector<size_t>R2(c_hierarchy.L-c_hierarchy.l_th+1);
+        R2.at(0) = max_rad;
+//        std::cout << "max_rad = " << max_rad << "\n";
+        for (int i=1; i<c_hierarchy.L-c_hierarchy.l_th+1; i++) {
+            R2.at(i) = R2.at(i-1) / 2;
+//            std::cout << "R2["<<i<<"] = " << R2.at(i) << ", "; 
         }
-        dfs_amr<Real>(child_set, unshuffled_u, c_hierarchy, thresh, depth, bin_w, bin_min, ratio_bin, u_map);
+//        std::cout << "\n"; 
+        dfs_amr<Real>(child_set, unshuffled_u, c_hierarchy, thresh, depth, bin_w, bin_min, ratio_bin, u_map, max_rad, R2);
+//        std::cout << "average radius = " << avg_rad / (double)cnt_pts << "\n";
     }
     if (filename != NULL) {
         FILE *fp = fopen (filename, "wb");
         fwrite (u_map , sizeof(Real), ndof, fp);
         fclose(fp);
     }
-//    FILE *fp = fopen ("level", "wb");
+//    FILE *fp = fopen ("level.bin", "wb");
 //    fwrite (c_hierarchy.level , sizeof(size_t), ndof, fp);
 //    fclose(fp);
+/*    
+    size_t nonzr_ = 0;
+    for (int i=0; i<ndof; i++) {
+        if (u_map[i]==0) {
+            nonzr_ ++;
+        }
+    }
+    std::cout << "percentage of high-res in u_map: " << (float)nonzr_*100.0 / ndof << "%\n";
+*/
   }
-
-  size_t nonzr_ = 0;
-  for (int i=0; i<ndof; i++) {
-  	if (u_map[i]==0) {
-		nonzr_ ++;
-	}
-  }
-  std::cout << "percentage of high-res in u_map: " << (float)nonzr_*100.0 / ndof << "%\n";
 
   shuffle(hierarchy, u_map, unshuffled_u);
+  // 2D case is bounded by the horizontal direction of coefficient_nodal error propagation  
+  // 3rd peak, scalar=125 for 2D if nodal nodal and scalar=50 if nodal coefficient vertical
+//  size_t scalar = (N==1)? 30 : ((N==2) ? 50 : 1);   
+//  2nd peak, scalar = 33 for 2D if nodal nodal and scalar=13 if nodal coefficient vertical
+  size_t scalar = (N==1) ? 8 : ((N==2) ? 33 : 1);  
   // now unshuffled_u is the shuffled u_map
   using Qntzr = TensorMultilevelCoefficientQuantizer<N, Real, DEFAULT_INT_T>;
   const Qntzr quantizer(hierarchy, s, tolerance, scalar);
+//  std::cout << "tolerance -- hr: " << tolerance << ", lr: " << tolerance * scalar<< "\n";
   using It = typename Qntzr::iterator;
   const RangeSlice<It> quantized_range = quantizer(u, unshuffled_u);
   const std::vector<DEFAULT_INT_T> quantized(quantized_range.begin(),
@@ -521,18 +525,7 @@ compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Rea
   free(u);
   free(unshuffled_u);
   free(u_map);
-/*  fp = fopen("quantized_coeff.bin", "wb");
-  float *const unshuffled_qc = (float *)std::malloc(ndof * sizeof(float));
-  float *const shuffled_qc   = (float *)std::malloc(ndof * sizeof(float));
-  for (int i=0; i<ndof; i++) {
-      shuffled_qc[i] = (float)quantized.data()[i];
-  }
-  unshuffle(hierarchy, shuffled_qc, unshuffled_qc);
-  fwrite(unshuffled_qc, sizeof(float), ndof, fp);
-  fclose(fp);
-  free(unshuffled_qc);
-  free(shuffled_qc);
-*/
+
 #ifndef MGARD_ZSTD
   std::vector<std::uint8_t> z_output;
   // TODO: Check whether `compress_memory_z` changes its input.

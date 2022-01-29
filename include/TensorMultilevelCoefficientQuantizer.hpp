@@ -53,10 +53,10 @@ public:
   const Real s;
 
   //! Global quantization error tolerance.
-  std::vector<Real> tolerance = std::vector<Real>(10);
+  const Real tolerance; 
 
   //QG! Scalar -- scalar*tolerance for coefficients that are smaller than thresh
-  std::vector<size_t> scalar = std::vector<size_t>(10);
+  std::size_t scalar;
 private:
   //! Nodes of the finest mesh in the hierarchy.
   const ShuffledTensorNodeRange<N, Real> nodes;

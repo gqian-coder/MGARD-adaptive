@@ -99,8 +99,8 @@ private:
 template <std::size_t N, typename Real>
 CompressedDataset<N, Real>
 compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Real s,
-        const Real tolerance, const std::vector<Real> thresh, const size_t scalar,
-         const size_t bin_max, const std::vector<size_t> ratio_bin, const size_t l_th,
+        const Real tolerance, const std::vector<Real> thresh, const size_t bin_max, 
+        const std::vector<size_t> ratio_bin, const size_t l_th,
         const char* filename, bool wr);
 //! Decompress a function on a tensor product grid.
 //!
