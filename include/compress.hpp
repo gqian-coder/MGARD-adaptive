@@ -101,7 +101,7 @@ CompressedDataset<N, Real>
 compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Real s,
         const Real tolerance, const std::vector<Real> thresh, const size_t bin_max, 
         const std::vector<size_t> ratio_bin, const size_t l_th,
-        const char* filename, bool wr);
+        const char* filename, bool wr, double &timer, size_t &roi_cnt);
 //! Decompress a function on a tensor product grid.
 //!
 //!\param compressed Compressed function to be decompressed.

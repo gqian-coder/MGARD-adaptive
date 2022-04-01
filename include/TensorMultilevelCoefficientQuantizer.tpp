@@ -75,12 +75,12 @@ Int Qntzr<N, Real, Int>::operator()(const TensorNode<N> node,
   if (s == std::numeric_limits<Real>::infinity()) {
     return supremum_quantizer(coefficient);
   } else {
-    Real tol = cmap ? tolerance * scalar : tolerance;
+    Real tol = (cmap==255) ? tolerance * scalar : tolerance;
 
     const LinearQuantizer<Real, Int> quantizer(
         s_quantum(hierarchy, s, tol, node));
 //    std::cout << cnt << " coefficient: " << coefficient << ", cmap: " << cmap << ", tolerance:" << tol << ", quantized:"<< (cmap? scalar*quantizer(coefficient) : quantizer(coefficient)) << "\n";
-    return (cmap? scalar*quantizer(coefficient) : quantizer(coefficient)); 
+    return ((cmap==255)? scalar*quantizer(coefficient) : quantizer(coefficient)); 
   }
 }
 

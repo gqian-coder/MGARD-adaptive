@@ -223,15 +223,15 @@ std::vector<struct box_coord2d> filter_hist_blc(const Real *u_mc, customized_hie
 
 template <typename Real>
 void check_nearby_lgc(customized_hierarchy &c_hierarchy, Real *u_map, 
-						int r, int c, int rad, std::vector<size_t> R2, u_char flag)
+						int r, int c, const size_t rad, std::vector<size_t> R2, u_char flag)
 {
-  int k, temp;
+  int k;
   std::vector<int> top_r{0, 0, r, r}; 
-  std::vector<int> bottom_r{r+1, r+1, c_hierarchy.Row, c_hierarchy.Row};
+  std::vector<int> bottom_r{r, r, c_hierarchy.Row, c_hierarchy.Row};
   std::vector<int> left_c{0, c, 0, c};
-  std::vector<int> right_c{c+1, c_hierarchy.Col, c+1, c_hierarchy.Col};
+  std::vector<int> right_c{c, c_hierarchy.Col, c, c_hierarchy.Col};
   size_t l, backoff_dist;
-  temp = r-rad;
+  int temp = r-rad;
   if (temp>0) {top_r[0] = temp; top_r[1] = temp;} 
   temp = c-rad;
   if (temp>0) {left_c[0] = temp; left_c[2] = temp;}
@@ -241,18 +241,17 @@ void check_nearby_lgc(customized_hierarchy &c_hierarchy, Real *u_map,
   if (temp<c_hierarchy.Col) {right_c[1] = temp; right_c[3] = temp;}
   size_t l_th = c_hierarchy.l_th;
   size_t Col  = c_hierarchy.Col;
-  int check_n = 0;
   for (int fg=0; fg<4; fg++) { // top left, top right, bottom left, bottom right
     if ((flag & (1<<fg))) { 
       for (int rr=top_r[fg]; rr<bottom_r[fg]; rr++) {
         for (int cc=left_c[fg]; cc<right_c[fg]; cc++) {
           k = rr*Col+cc;
-          if (u_map[k] !=0) {
+          if (u_map[k] == 255) {//!=0) {
             l = c_hierarchy.level[k];
             if (l>=l_th) {
-              backoff_dist = R2[l-l_th];
+              backoff_dist = R2[l-l_th];//((rr==r) || (cc==c)) ? 0.75*R2[l-l_th] : R2[l-l_th];
               if (std::abs(rr-r)+std::abs(cc-c) < backoff_dist) {
-                u_map[k] = 125;
+                u_map[k] = 125;//0;
               }
             }
           }
@@ -262,104 +261,62 @@ void check_nearby_lgc(customized_hierarchy &c_hierarchy, Real *u_map,
   }
 }
 
-template <typename Real>
-void check_horizontal_lgc(customized_hierarchy &c_hierarchy, Real *u_map,
-                        int r, int c, int rad, std::vector<size_t> R2, u_char flag)
-{
-    int k;
-    size_t l, backoff_dist;
-    size_t l_th = c_hierarchy.l_th;
-    size_t Col  = c_hierarchy.Col;
-    int cmin = flag ? c : ((c-rad>0) ? (c-rad):0);;//(c+5) : ((c-rad>0) ? (c-rad):0); 
-    int cmax = flag ? ((c+rad<Col) ? (c+rad):Col-1) : c;// (c-5); 
-    for (int cc=cmin+1; cc<=cmax; cc++) {
-        k = r*Col + cc;
-        if (u_map[k] == 255) { // l<l_th already being set to buffer zone 
-            l = c_hierarchy.level[k];
-            backoff_dist = R2[l-l_th];
-            if (std::abs(cc-c) < backoff_dist) {
-                u_map[k] = 125;
-            }
-        }
-    }
-}
-
-template <typename Real>
-void check_vertical_lgc(customized_hierarchy &c_hierarchy, Real *u_map,
-                        int r, int c, int rad, std::vector<size_t> R2, u_char flag)
-{
-    int k;
-    int rmin = flag ? r : ((r-rad>0) ? (r-rad):0); //(r+5) : ((r-rad>0) ? (r-rad):0);
-    int rmax = flag ? ((r+rad<c_hierarchy.Row) ? (r+rad):c_hierarchy.Row-1) : c;//(r-5);
-    size_t l, backoff_dist;
-    size_t l_th = c_hierarchy.l_th;
-    size_t Col  = c_hierarchy.Col;
-    for (int rr=rmin+1; rr<=rmax; rr++) {
-        k = rr*Col + c;
-        if (u_map[k] == 255) { // l<l_th already being set to buffer zone 
-            l = c_hierarchy.level[k];
-            backoff_dist = R2[l-l_th];
-            if (std::abs(rr-r) < backoff_dist) {
-                u_map[k] = 125;
-            }
-        }
-    }
-}
-
 //  expand the 2D region surrounding the selected coefficients 
 template <typename Real>
-void check_edge_coeff(customized_hierarchy &c_hierarchy, Real *u_map, int rmin, 
-                        int rmax, int cmin, int cmax, int max_rad, std::vector<size_t> R2)
+void check_edge_coeff(customized_hierarchy &c_hierarchy, Real *u_map, int rleft, 
+                        int rright, int cleft, int cright, int max_rad, std::vector<size_t> R2)
 {
-    std::vector<u_char>flag {1,2,4,8};//{7, 11, 13, 14};
+    std::vector<int>rr_vec{rleft, rright};
+    std::vector<int>cc_vec{cleft, cright};
+    std::vector<u_char>flag {3, 12, 5, 10};
+    int cnt=0;
     // the top and bottom horizontal edge 
-    size_t k, Col, Row, rstart;
-    Col = c_hierarchy.Col;
-    Row = c_hierarchy.Row;
-    rstart = ((size_t)rmin) * Col;
-    for (int cc=cmin+1; cc<cmax; cc++) {
-        k = rstart + cc;
-        if (u_map[k]!=0)
-            check_vertical_lgc<Real>(c_hierarchy, u_map, rmin, cc, max_rad, R2, 0);
+    for (std::vector<int>::iterator rr = rr_vec.begin() ; rr != rr_vec.end(); ++rr) {
+        for (int cc=cleft; cc<cright+1; cc++) {
+            check_nearby_lgc<Real>(c_hierarchy, u_map, (*rr), cc, max_rad, R2, flag[cnt]);
+        }
+        cnt ++;
     }
-    if (u_map[rstart+cmin]!=0) 
-        check_nearby_lgc<Real>(c_hierarchy, u_map, rmin, cmin, max_rad, R2, flag[0]);
-
-    if (u_map[rstart+cmax]!=0)
-        check_nearby_lgc<Real>(c_hierarchy, u_map, rmin, cmax, max_rad, R2, flag[1]);
-    rstart = ((size_t)rmax) * Col;
-    for (int cc=cmin+1; cc<cmax; cc++) {
-        k = rstart + cc;
-        if (u_map[k]!=0)
-            check_vertical_lgc<Real>(c_hierarchy, u_map, rmax, cc, max_rad, R2, 1);
-    }
-    if (u_map[rstart+cmin]!=0)    
-        check_nearby_lgc<Real>(c_hierarchy, u_map, rmax, cmin, max_rad, R2, flag[2]);
-    if (u_map[rstart+cmax]!=0)
-        check_nearby_lgc<Real>(c_hierarchy, u_map, rmax, cmax, max_rad, R2, flag[3]);
-
     // the left and right vertical edge
-    for (int rr=rmin+1; rr<rmax; rr++) {
-        k = ((size_t)rr*Col + cmin);
-        if (u_map[k]!=0)
-            check_horizontal_lgc<Real>(c_hierarchy, u_map, rr, cmin, max_rad, R2, 0);
-    }
-    for (int rr=rmin+1; rr<rmax; rr++) {
-        k = ((size_t)rr*Col + cmax);
-        if (u_map[k]!=0)
-            check_horizontal_lgc<Real>(c_hierarchy, u_map, rr, cmax, max_rad, R2, 1);
+    for (std::vector<int>::iterator cc = cc_vec.begin() ; cc != cc_vec.end(); ++cc) {
+        for (int rr=rleft+1; rr<rright; rr++) {
+            check_nearby_lgc<Real>(c_hierarchy, u_map, rr, (*cc), max_rad, R2, flag[cnt]);
+        }
+        cnt ++;
     }
 }
-
+/*
+ *  only expand the horizontal and vertical direction for the selected RoI
+template <typename Real>
+void check_edge_coeff(customized_hierarchy &c_hierarchy, Real *u_map,
+                        int rleft, int rright, int cleft, int cright, int max_rad,
+                        std::vector<size_t> R2)
+{
+    std::vector<u_char>flag{15};//{3, 12, 5, 10};
+    int cnt=0;
+    // the top and bottom horizontal edge
+    if (cright-cleft>0) {
+        for (int cc=cleft; cc<cright; cc++) {
+            check_nearby_lgc<Real>(c_hierarchy, u_map, rleft, cc, max_rad, R2, flag[cnt]);
+        }
+    }
+    // the left and right vertical edge
+    if (rright-rleft>0) {
+        for (int rr=rleft; rr<rright; rr++) {
+            check_nearby_lgc<Real>(c_hierarchy, u_map, rr, cleft, max_rad, R2, flag[cnt]);
+        }
+    }
+}
+*/
+//double avg_rad = 0;
+//int    cnt_pts = 0;
 // expand the 2D region surrounding the selected coefficients
 template <typename Real>
-double dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customized_hierarchy &c_hierarchy, 
+void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customized_hierarchy &c_hierarchy, 
 			const std::vector<Real> thresh, int &depth, size_t &bin_w, const size_t bin_min, 
             const std::vector<size_t> ratio_bin, Real* u_map, const size_t max_rad, const std::vector<size_t> R2) {
 //	std::cout << "initial bin_w = " << bin_w << ", ratio_R = " << ratio_bin[depth] << "\n";
 	bin_w = std::ceil(bin_w / ratio_bin[depth]);
-    std::chrono::steady_clock::time_point start, stop;
-    double bz_timer;
 //	std::cout << "depth = " << depth << ", bin_w = " << bin_w << "\n";
 //	std::cout << "number of bins: " << blc_set.size() << "\n";
 	for (int k=0; k<blc_set.size(); k++) {
@@ -379,40 +336,143 @@ double dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, custom
 				for (r=filtered_set.at(cid).x0; r<filtered_set.at(cid).x1; r++) {
 					int r0 = r * c_hierarchy.Col;
 					for (c=filtered_set.at(cid).y0; c<filtered_set.at(cid).y1; c++) {
-					    std::size_t l = c_hierarchy.level[r0+c];
+						// to avoid the impact from neighboring coefficients at coarser level
+						// check_nearby_lgc
+//						std::cout << "cid = " << cid << ", r = " << r << ", c = " << c << "\n";
+					    const std::size_t l = c_hierarchy.level[r0+c];
 						if (l >= c_hierarchy.l_th) {
-//                            l = c_hierarchy.L;
-//                        }
 							int rad = static_cast<int>(1<<(c_hierarchy.L - l));
-							int rmin  = (r-rad > 0) ? (r-rad) : 0;
-							int rmax = (r+rad+1<c_hierarchy.Row) ? (r+rad+1) : c_hierarchy.Row;
-                            int cmin  = (c-rad>0) ? c-rad : 0;
-                            int cmax = (c+rad+1<c_hierarchy.Col) ? (c+rad+1) : c_hierarchy.Col;
-                            start = std::chrono::steady_clock::now();
-                            check_edge_coeff(c_hierarchy, u_map, rmin, rmax, cmin, cmax, max_rad, R2); 
-                            stop = std::chrono::steady_clock::now();
-                            bz_timer += ((double)(std::chrono::duration_cast<std::chrono::microseconds>(stop - start)).count())/1000.0;
-							for (int rr=rmin; rr<rmax; rr++) {
+							int rleft  = (r-rad > 0) ? (r-rad) : 0;
+							int rright = (r+rad+1<c_hierarchy.Row) ? (r+rad+1) : c_hierarchy.Row;
+                            int cleft  = (c-rad>0) ? c-rad : 0;
+                            int cright = (c+rad+1<c_hierarchy.Col) ? (c+rad+1) : c_hierarchy.Col;
+							for (int rr=rleft; rr<rright; rr++) {
 								int r00 = rr*c_hierarchy.Col;
-   	                			for (int cc=cmin; cc<cmax; cc++) {
+   	                			for (int cc=cleft; cc<cright; cc++) {
+//                                    check_nearby_lgc<Real>(c_hierarchy, u_map, rr, cc, max_rad, R2);
 									u_map[r00+cc] = 0;
 								}
 							}
 						}
 					}
 				}
+                // only check the edge of each histogram bin 
+                std::vector<int> row_vec {filtered_set.at(cid).x0};
+                if (filtered_set.at(cid).x1 - filtered_set.at(cid).x0 > 1) {
+                    row_vec.push_back(filtered_set.at(cid).x1-1);
+                }
+                for (std::vector<int>::iterator it = row_vec.begin() ; it != row_vec.end(); ++it) { 
+                    r = (*it);
+                    int r0 = r * c_hierarchy.Col;
+                    for (c=filtered_set.at(cid).y0; c<filtered_set.at(cid).y1; c++) {
+                        // check
+                        const std::size_t l = c_hierarchy.level[r0+c];
+                        if (l >= c_hierarchy.l_th) { 
+                            int rad = static_cast<int>(1<<(c_hierarchy.L - l));
+//                            avg_rad += (double)rad;
+//                            cnt_pts ++;
+                            int rleft  = (r-rad > 0) ? (r-rad) : 0;
+                            int rright = (r+rad<c_hierarchy.Row) ? (r+rad) : c_hierarchy.Row-1;
+                            int cleft  = (c-rad>0) ? c-rad : 0;
+                            int cright = (c+rad<c_hierarchy.Col) ? (c+rad) : c_hierarchy.Col-1;
+                            check_edge_coeff(c_hierarchy, u_map, rleft, rright, cleft, cright, max_rad, R2);
+                        }
+                    }
+                }
+                if ((c_hierarchy.Col > 1) && (bin_w>1)) {
+                    std::vector<int> col_vec {filtered_set.at(cid).y0};
+                    if (filtered_set.at(cid).y1 - filtered_set.at(cid).y0 > 1) {
+                        col_vec.push_back(filtered_set.at(cid).y1-1);
+                    }
+                    for (std::vector<int>::iterator it = col_vec.begin() ; it != col_vec.end(); ++it) {
+                        c = (*it);
+                        for (int r=filtered_set.at(cid).x0+1; r<filtered_set.at(cid).x1; r++) {
+                        // check
+                            int r0 = r * c_hierarchy.Col;
+                            const std::size_t l = c_hierarchy.level[r0+c];
+                            if (l >= c_hierarchy.l_th) {
+                                int rad = static_cast<int>(1<<(c_hierarchy.L - l));
+                                int rleft  = (r-rad > 0) ? (r-rad) : 0;
+                                int rright = (r+rad<c_hierarchy.Row) ? (r+rad) : c_hierarchy.Row-1;
+                                int cleft  = (c-rad>0) ? c-rad : 0;
+                                int cright = (c+rad<c_hierarchy.Col) ? (c+rad) : c_hierarchy.Col-1;
+                                check_edge_coeff(c_hierarchy, u_map, rleft, rright, cleft, cright, max_rad, R2);
+                            }
+                        }
+                    }
+                }
 			}
 		} else {
 //			std::cout << "call recursive dfs_arm, depth = " << depth << ", bin_w = " << bin_w << ", # of blocks: " << filtered_set.size() << " / " << child_set.size() << "\n";
 			depth ++;
-			bz_timer += dfs_amr<Real>(filtered_set, u_mc, c_hierarchy, thresh, depth, bin_w, bin_min, ratio_bin, u_map, max_rad, R2);
+			dfs_amr<Real>(filtered_set, u_mc, c_hierarchy, thresh, depth, bin_w, bin_min, ratio_bin, u_map, max_rad, R2);
 		}
 	}
 	bin_w = size_t(bin_w * ratio_bin[depth]);
 	depth --;
-    return bz_timer;
 }
+/*
+ *  only expand the horizontal and vertical direction for the selected RoI 
+template <typename Real>
+void dfs_amr(std::vector<struct box_coord2d> blc_set, const Real *u_mc, customized_hierarchy &c_hierarchy,
+            const std::vector<Real> thresh, int &depth, size_t &bin_w, const size_t bin_min,
+            const std::vector<size_t> ratio_bin, Real* u_map, const size_t max_rad, const std::vector<size_t> R2) {
+//  std::cout << "initial bin_w = " << bin_w << ", ratio_R = " << ratio_bin[depth] << "\n";
+    bin_w = std::ceil(bin_w / ratio_bin[depth]);
+//  std::cout << "depth = " << depth << ", bin_w = " << bin_w << "\n";
+//  std::cout << "number of bins: " << blc_set.size() << "\n";
+    for (int k=0; k<blc_set.size(); k++) {
+        size_t bR  = blc_set.at(k).x1 - blc_set.at(k).x0;
+        size_t bC  = blc_set.at(k).y1 - blc_set.at(k).y0;
+        size_t nbin_R = (size_t)std::ceil((float)bR / bin_w);
+        size_t nbin_C = (size_t)std::ceil((float)bC / bin_w);
+//      std::cout << "{" <<  blc_set.at(k).x0 << ", " <<  blc_set.at(k).x1 << ", " <<  blc_set.at(k).y0 << ", " <<  blc_set.at(k).y1 << "}\n";
+//      std::cout << "k = " << k << ", bR = " << bR << ", bC = " << bC << ", nbin_R = " << nbin_R << ", nbin_C = " << nbin_C << "\n";
+        std::vector<struct box_coord2d> child_set(nbin_R*nbin_C);
+        get_hist_blc_coord(child_set, nbin_R, nbin_C, bR, bC, bin_w, blc_set.at(k).x0, blc_set.at(k).y0);
+        std::vector<struct box_coord2d>filtered_set = filter_hist_blc<Real>(u_mc, c_hierarchy, child_set, thresh[depth], bin_w);
+        if (bin_w <= bin_min){
+//            std::cout << "max_rad: " << max_rad << "\n";
+            for (int cid=0; cid<filtered_set.size(); cid++) {
+                int r, c;
+                for (r=filtered_set.at(cid).x0; r<filtered_set.at(cid).x1; r++) {
+                    int r0 = r * c_hierarchy.Col;
+                    for (c=filtered_set.at(cid).y0; c<filtered_set.at(cid).y1; c++) {
+                        // to avoid the impact from neighboring coefficients at coarser level
+                        // check_nearby_lgc
+//                      std::cout << "cid = " << cid << ", r = " << r << ", c = " << c << "\n";
+                        const std::size_t l = c_hierarchy.level[r0+c];
+                        if (l >= c_hierarchy.l_th) {
+                            int rad = static_cast<int>(1<<(c_hierarchy.L - l));
+                            int rleft  = (r-rad > 0) ? (r-rad) : 0;
+                            int rright = (r+rad+1<c_hierarchy.Row) ? (r+rad+1) : c_hierarchy.Row;
+                            int cleft  = (c-rad>0) ? c-rad : 0;
+                            int cright = (c+rad+1<c_hierarchy.Col) ? (c+rad+1) : c_hierarchy.Col;
 
+                            // only expand the horizontal and vertical direction for the selected RoI
+                            int r00 = r*c_hierarchy.Col;
+                            for (int cc=cleft; cc<cright; cc++) {
+                                u_map[r00+cc] = 0;
+                            }
+                            check_edge_coeff(c_hierarchy, u_map, r, r, cleft, cright, max_rad, R2);
+                            for (int rr=rleft; rr<rright; rr++) {
+                                u_map[rr*c_hierarchy.Col+c] = 0;
+                            }
+                            check_edge_coeff(c_hierarchy, u_map, rleft, rright, c, c, max_rad, R2);
+                        }
+                    }
+                }
+            }
+        } else {
+//          std::cout << "call recursive dfs_arm, depth = " << depth << ", bin_w = " << bin_w << ", # of blocks: " << filtered_set.size() << " / " << child_set.size() << "\n";
+            depth ++;
+            dfs_amr<Real>(filtered_set, u_mc, c_hierarchy, thresh, depth, bin_w, bin_min, ratio_bin, u_map, max_rad, R2);
+        }
+    }
+    bin_w = size_t(bin_w * ratio_bin[depth]);
+    depth --;
+}
+*/
 // u_map: multi-resolution
 using DEFAULT_INT_T = long int;
 
@@ -421,7 +481,7 @@ CompressedDataset<N, Real>
 compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Real s, 
 		const Real tolerance, const std::vector<Real> thresh, 
 		 const size_t bin_max, const std::vector<size_t> ratio_bin, const size_t l_th,
-        const char* filename, bool wr /*1 for write 0 for read*/, double &timer, double &bz_timer, size_t &roi_cnt) {
+        const char* filename, bool wr /*1 for write 0 for read*/, double &timer) {
   const std::size_t ndof = hierarchy.ndof();
   // TODO: Can be smarter about copies later.
   Real *const u = static_cast<Real *>(std::malloc(ndof * sizeof(Real)));
@@ -484,7 +544,7 @@ compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Rea
 	    if (c_hierarchy.level[i]<l_th) {
 		    u_map[i] = 125;
 	    } else {
-            u_map[i] = 255; 
+            u_map[i] = 255;//hierarchy.L; 
         }
     }
     c_hierarchy.l_th = l_th;
@@ -497,26 +557,25 @@ compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Rea
         std::vector<struct box_coord2d> blc_set(nbin_R*nbin_C*nbin_H);
 //        std::cout << "nbin_R = " << nbin_R << ", nbin_C = " << nbin_C << ", nbin_H = " << nbin_H << "\n"; 
 //        std::cout << "Col = " << c_hierarchy.Col << ", Row = " << c_hierarchy.Row << ", Height = " << c_hierarchy.Height << "\n";
-        size_t max_rad = (size_t)(2 * (1<<(c_hierarchy.L - c_hierarchy.l_th+1))); // 2nd peak to the 0th center
-        std::vector<size_t>R2(c_hierarchy.L-c_hierarchy.l_th+1);
-        R2.at(0) = max_rad;
-//        std::cout << "Lmax = " << c_hierarchy.L << ",max_rad = " << max_rad << "\n";
-        for (int i=1; i<c_hierarchy.L-c_hierarchy.l_th+1; i++) {
-            R2.at(i) = R2.at(i-1) / 2;
-//            std::cout << "R2["<<i<<"] = " << R2.at(i) << ", ";
-        }
-        start = std::chrono::steady_clock::now();
         get_hist_blc_coord(blc_set, nbin_R, nbin_C, c_hierarchy.Row, c_hierarchy.Col, bin_max, 0, 0);
         std::vector<struct box_coord2d>child_set = filter_hist_blc<Real>(unshuffled_u, c_hierarchy, blc_set, thresh[0], bin_max);
 
         // depth first search for hierachical block refinement 
 //        std::cout << "number of blocks after the 1st thresholding: " << child_set.size() << "/" << blc_set.size() <<"\n";
-        double bz_time = dfs_amr<Real>(child_set, unshuffled_u, c_hierarchy, thresh, depth, bin_w, bin_min, ratio_bin, u_map, max_rad, R2);
+        size_t max_rad = (size_t)(2 * (1<<(c_hierarchy.L - c_hierarchy.l_th+1))); // 2nd peak to the 0th center 
+        std::vector<size_t>R2(c_hierarchy.L-c_hierarchy.l_th+1);
+        R2.at(0) = max_rad;
+//        std::cout << "max_rad = " << max_rad << "\n";
+        for (int i=1; i<c_hierarchy.L-c_hierarchy.l_th+1; i++) {
+            R2.at(i) = R2.at(i-1) / 2;
+//            std::cout << "R2["<<i<<"] = " << R2.at(i) << ", "; 
+        }
+        start = std::chrono::steady_clock::now();
+        dfs_amr<Real>(child_set, unshuffled_u, c_hierarchy, thresh, depth, bin_w, bin_min, ratio_bin, u_map, max_rad, R2);
         stop = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-        timer    += (double)elapsed.count() / 1000.0;
-        bz_timer += bz_time;
-//        std::cout << "amr spent " <<(double)elapsed.count() / 1000.0 << "ms\n";
+        timer += (double)elapsed.count() / 1000.0;
+        std::cout << "amr spent " <<(double)elapsed.count() / 1000.0 << "ms\n";
     }
     if (filename != NULL) {
         FILE *fp = fopen (filename, "wb");
@@ -526,17 +585,17 @@ compress(const TensorMeshHierarchy<N, Real> &hierarchy, Real *const v, const Rea
 //    FILE *fp = fopen ("level.bin", "wb");
 //    fwrite (c_hierarchy.level , sizeof(size_t), ndof, fp);
 //    fclose(fp);
-
-//    size_t bz_cnt = 0, roi_cnt=0;
-//    for (int i=0; i<ndof; i++) {
-//        if (u_map[i]==0) {
-//            roi_cnt ++;
-//        } //else if (u_map[i]==125) {
-           // bz_cnt ++;
-        //}
-//    }
-//    std::cout << "percentage of roi in u_map: " << (float)roi_cnt*100.0 / ndof << "%, buffer zone:" << (float)bz_cnt*100.0 / ndof << "%\n";
-
+/*
+    size_t bz_cnt = 0, roi_cnt=0;
+    for (int i=0; i<ndof; i++) {
+        if (u_map[i]==0) {
+            roi_cnt ++;
+        } else if (u_map[i]==125) {
+            bz_cnt ++;
+        }
+    }
+    std::cout << "percentage of roi in u_map: " << (float)roi_cnt*100.0 / ndof << "%, buffer zone:" << (float)bz_cnt*100.0 / ndof << "%\n";
+*/
   }
   shuffle(hierarchy, u_map, unshuffled_u);
   // 2D case is bounded by the horizontal direction of coefficient_nodal error propagation  
